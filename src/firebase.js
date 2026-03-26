@@ -27,12 +27,11 @@ export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
 
-  // On GitHub Pages, popups often fail due to COOP policies.
-  // We will go straight to Redirect to ensure it works every time.
   try {
+    // Instead of Popup, we use Redirect for GitHub Pages compatibility
     await signInWithRedirect(auth, provider);
   } catch (err) {
-    console.error("Auth Error:", err);
+    console.error("Google Sign-in Error:", err);
     throw err;
   }
 }
