@@ -26,23 +26,12 @@ export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
 
+  // On GitHub Pages, popups often fail due to COOP policies.
+  // We will go straight to Redirect to ensure it works every time.
   try {
-    const result = await signInWithPopup(auth, provider);
-    return result.user;
+    await signInWithRedirect(auth, provider);
   } catch (err) {
-    console.error("Auth Error Code:", err.code); // Look for this in your browser console (F12)
-    
-    const useRedirect = [
-      'auth/popup-blocked',
-      'auth/popup-closed-by-user',
-      'auth/cancelled-popup-request',
-      'auth/unauthorized-domain', // This confirms Step 1 is the issue
-    ].includes(err.code);
-
-    if (useRedirect) {
-      await signInWithRedirect(auth, provider);
-      return null;
-    }
+    console.error("Auth Error:", err);
     throw err;
   }
 }
