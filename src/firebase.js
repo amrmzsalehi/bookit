@@ -23,30 +23,27 @@ export const auth = getAuth(app)
 // If popup is blocked or fails (common on GitHub Pages / mobile),
 // automatically fall back to redirect (full page redirect to Google).
 export async function signInWithGoogle() {
-  const provider = new GoogleAuthProvider()
-  provider.setCustomParameters({ prompt: 'select_account' })
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
 
   try {
-    // Try popup first
-    const result = await signInWithPopup(auth, provider)
-    return result.user
+    const result = await signInWithPopup(auth, provider);
+    return result.user;
   } catch (err) {
-    // These error codes mean popup was blocked or not allowed — use redirect instead
+    console.error("Auth Error Code:", err.code); // Look for this in your browser console (F12)
+    
     const useRedirect = [
       'auth/popup-blocked',
       'auth/popup-closed-by-user',
       'auth/cancelled-popup-request',
-      'auth/unauthorized-domain',        // domain not in Firebase authorized list
-    ].includes(err.code)
+      'auth/unauthorized-domain', // This confirms Step 1 is the issue
+    ].includes(err.code);
 
     if (useRedirect) {
-      // This sends the user to Google's login page, then brings them back
-      await signInWithRedirect(auth, provider)
-      return null  // page will reload — result is handled in checkRedirectResult()
+      await signInWithRedirect(auth, provider);
+      return null;
     }
-
-    // Any other error — rethrow so the UI can show it
-    throw err
+    throw err;
   }
 }
 
