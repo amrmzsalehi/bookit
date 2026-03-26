@@ -156,46 +156,37 @@ export default function App() {
   const [authError, setAuthError] = useState('')   // shows visible error if auth fails
 
   useEffect(() => {
-    // ── Step 1: Check if user just came back from Google redirect login ──
-    // This runs once on page load. If they used redirect (not popup),
-    // Firebase has their credentials waiting here.
+    // 1. Check if we just returned from a Google Redirect
     checkRedirectResult().catch(err => {
-      setAuthError('Sign-in failed: ' + err.message)
-    })
+      console.error("Redirect Error:", err);
+      setAuthError('Sign-in failed. Please try again.');
+    });
 
-    // ── Step 2: Listen for auth state changes ──
-    // This fires immediately with the current user (or null),
-    // and again any time they sign in or out.
+    // 2. Listen for User State
     const unsub = onAuthStateChanged(auth, async fbUser => {
+      setLoading(true); // Start loading when state changes
       try {
-        setUser(fbUser)
-
+        setUser(fbUser);
         if (fbUser) {
-          // User is signed in — try to load their profile
-          const p = await getMyProfile(fbUser.uid)
-          setProfile(p)
-          // p is null for brand-new users → send to onboarding
-          // p has data for returning users → send to home
-          setPage(p ? 'home' : 'onboarding')
+          // Attempt to get profile, but wrap it so it doesn't hang the app
+          const p = await getMyProfile(fbUser.uid).catch(() => null);
+          setProfile(p);
+          setPage(p ? 'home' : 'onboarding');
         } else {
-          // No user signed in
-          setProfile(null)
-          setPage('login')
+          setProfile(null);
+          setPage('login');
         }
       } catch (err) {
-        // Something went wrong loading profile — don't get stuck spinning
-        console.error('Auth state error:', err)
-        setAuthError('Something went wrong loading your account. Please refresh.')
-        setPage('login')
+        console.error('Auth logic error:', err);
+        setAuthError('Error loading account. Try refreshing.');
       } finally {
-        // Always stop the loading spinner, no matter what happened
-        setLoading(false)
+        // CRITICAL: This MUST run to stop the infinite spinner
+        setLoading(false);
       }
-    })
+    });
 
-    return unsub  // cleanup the listener when component unmounts
-  }, [])
-
+    return unsub;
+  }, []);
   const go = setPage
 
   // ── Show loading spinner while Firebase checks auth state ──
