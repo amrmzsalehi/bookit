@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js'
 import { initializeApp } from 'firebase/app'
 import {
   getAuth,
