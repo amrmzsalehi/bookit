@@ -148,19 +148,34 @@ export default function App() {
   const [page,    setPage]    = useState('home')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    return onAuthStateChanged(auth, async fbUser => {
-      setUser(fbUser)
-      if (fbUser) {
-        const p = await getMyProfile(fbUser.uid)
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
+    console.log("AUTH CHANGED:", fbUser)
+
+    setUser(fbUser)
+    setLoading(false)
+
+    if (!fbUser) {
+      setProfile(null)
+      setPage('login')
+      return
+    }
+
+    getMyProfile(fbUser.uid)
+      .then((p) => {
+        console.log("PROFILE:", p)
         setProfile(p)
         setPage(p ? 'home' : 'onboarding')
-      } else {
-        setProfile(null); setPage('login')
-      }
-      setLoading(false)
-    })
-  }, [])
+      })
+      .catch((err) => {
+        console.error("PROFILE ERROR:", err)
+        setProfile(null)
+        setPage('onboarding')
+      })
+  })
+
+  return () => unsubscribe()
+}, [])
 
   const go = setPage
 
