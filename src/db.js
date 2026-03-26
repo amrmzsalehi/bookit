@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 
-xport async function saveProfile(firebaseUID, data) {
+xport; async function saveProfile(firebaseUID, data) {
   const { error } = await supabase
     .from('profiles')
     .upsert({
