@@ -22,14 +22,14 @@ export const auth = getAuth(app)
 // ─── Sign in with Google ───────────────────────────────────────
 // Strategy: try popup first (faster UX).
 // If popup is blocked or fails (common on GitHub Pages / mobile),
-// automatically fall back to redirect (full page redirect to Google).
 export async function signInWithGoogle() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
 
   try {
-    // Instead of Popup, we use Redirect for GitHub Pages compatibility
+    // We skip the popup entirely because GitHub Pages blocks it (COOP error)
     await signInWithRedirect(auth, provider);
+    // This function will now cause the whole page to go to Google
   } catch (err) {
     console.error("Google Sign-in Error:", err);
     throw err;
