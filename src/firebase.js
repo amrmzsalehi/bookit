@@ -1,55 +1,32 @@
-import { createClient } from '@supabase/supabase-js'
-import { initializeApp } from 'firebase/app'
+import { initializeApp } from "firebase/app"
 import {
   getAuth,
   GoogleAuthProvider,
-  signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
   signOut
-} from 'firebase/auth'
+} from "firebase/auth"
 
 const firebaseConfig = {
-  apiKey:       import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain:   import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId:    import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId:        import.meta.env.VITE_FIREBASE_APP_ID
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 }
 
-const app      = initializeApp(firebaseConfig)
+const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 
-// ─── Sign in with Google ───────────────────────────────────────
-// Strategy: try popup first (faster UX).
-// If popup is blocked or fails (common on GitHub Pages / mobile),
-export async function signInWithGoogle() {
-  const provider = new GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
+const provider = new GoogleAuthProvider()
 
-  try {
-    // We skip the popup entirely because GitHub Pages blocks it (COOP error)
-    await signInWithRedirect(auth, provider);
-    // This function will now cause the whole page to go to Google
-  } catch (err) {
-    console.error("Google Sign-in Error:", err);
-    throw err;
-  }
+export function signIn() {
+  return signInWithRedirect(auth, provider)
 }
 
-// ─── Call this ONCE on app startup ────────────────────────────
-// Checks if the user just came back from a Google redirect login.
-// If they did, Firebase has their credentials waiting — this picks them up.
-export async function checkRedirectResult() {
-  try {
-    const result = await getRedirectResult(auth)
-    return result?.user || null
-  } catch (err) {
-    console.error('Redirect result error:', err.message)
-    return null
-  }
+export function handleRedirect() {
+  return getRedirectResult(auth)
 }
 
-// ─── Sign out ──────────────────────────────────────────────────
-export async function logout() {
-  await signOut(auth)
+export function logout() {
+  return signOut(auth)
 }
