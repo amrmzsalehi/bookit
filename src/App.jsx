@@ -156,38 +156,38 @@ export default function App() {
   const [loading,   setLoading]   = useState(true)
   const [authError, setAuthError] = useState('')   // shows visible error if auth fails
 
-  useEffect(() => {
-  // 1. Pick up the user if they just came back from the Google redirect
-  checkRedirectResult();
+useEffect(() => {
+    // Pick up the user if they are returning from a Google redirect
+    checkRedirectResult();
 
-  const unsub = onAuthStateChanged(auth, async (fbUser) => {
-    try {
-      if (fbUser) {
-        setUser(fbUser);
-        // We use the imported function from db.js
-        const profileData = await getMyProfile(fbUser.uid);
-        setProfile(profileData);
-        
-        if (profileData) {
-          setPage('home');
+    const unsub = onAuthStateChanged(auth, async (fbUser) => {
+      try {
+        if (fbUser) {
+          setUser(fbUser);
+          // 1. Try to get the profile
+          const p = await getMyProfile(fbUser.uid);
+          setProfile(p);
+          
+          // 2. Decide where to send them
+          if (p) {
+            setPage('home');
+          } else {
+            setPage('onboarding');
+          }
         } else {
-          setPage('onboarding');
+          setUser(null);
+          setPage('login');
         }
-      } else {
-        setUser(null);
-        setPage('login');
+      } catch (err) {
+        console.error("Auth state error:", err);
+      } finally {
+        // THIS IS THE FIX: No matter what happens above, stop the loading spinner.
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Critical Auth Error:", error);
-    } finally {
-      // THIS IS THE MOST IMPORTANT LINE: 
-      // It ensures the spinner stops even if Supabase fails.
-      setLoading(false); 
-    }
-  });
+    });
 
-  return () => unsub();
-}, []);
+    return () => unsub();
+  }, []);
   const go = setPage
 
   // ── Show loading spinner while Firebase checks auth state ──
