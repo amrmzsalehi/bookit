@@ -1,3 +1,4 @@
+import { supabase } from './supabase'
 import { useState, useEffect, useRef } from 'react'
 import { auth, signInWithGoogle, checkRedirectResult, logout } from './firebase'
 import { onAuthStateChanged } from 'firebase/auth'
