@@ -157,37 +157,37 @@ export default function App() {
   const [authError, setAuthError] = useState('')   // shows visible error if auth fails
 
   useEffect(() => {
-    // 1. Check if we just returned from a Google Redirect
-    checkRedirectResult().catch(err => {
-      console.error("Redirect Error:", err);
-      setAuthError('Sign-in failed. Please try again.');
-    });
+  // 1. Pick up the user if they just came back from the Google redirect
+  checkRedirectResult();
 
-    // 2. Listen for User State
-    const unsub = onAuthStateChanged(auth, async fbUser => {
-      setLoading(true); // Start loading when state changes
-      try {
+  const unsub = onAuthStateChanged(auth, async (fbUser) => {
+    try {
+      if (fbUser) {
         setUser(fbUser);
-        if (fbUser) {
-          // Attempt to get profile, but wrap it so it doesn't hang the app
-          const p = await getMyProfile(fbUser.uid).catch(() => null);
-          setProfile(p);
-          setPage(p ? 'home' : 'onboarding');
+        // We use the imported function from db.js
+        const profileData = await getMyProfile(fbUser.uid);
+        setProfile(profileData);
+        
+        if (profileData) {
+          setPage('home');
         } else {
-          setProfile(null);
-          setPage('login');
+          setPage('onboarding');
         }
-      } catch (err) {
-        console.error('Auth logic error:', err);
-        setAuthError('Error loading account. Try refreshing.');
-      } finally {
-        // CRITICAL: This MUST run to stop the infinite spinner
-        setLoading(false);
+      } else {
+        setUser(null);
+        setPage('login');
       }
-    });
+    } catch (error) {
+      console.error("Critical Auth Error:", error);
+    } finally {
+      // THIS IS THE MOST IMPORTANT LINE: 
+      // It ensures the spinner stops even if Supabase fails.
+      setLoading(false); 
+    }
+  });
 
-    return unsub;
-  }, []);
+  return () => unsub();
+}, []);
   const go = setPage
 
   // ── Show loading spinner while Firebase checks auth state ──
