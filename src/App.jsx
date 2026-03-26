@@ -8,7 +8,6 @@ import {
   sendMessage, getChatMessages, subscribeToChat, subscribeToApplications
 } from './db'
 
-/* ─── GOOGLE FONT ──────────────────────────────────────────── */
 const fontLink = document.createElement('link')
 fontLink.rel = 'stylesheet'
 fontLink.href = 'https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap'
@@ -33,7 +32,6 @@ globalStyle.textContent = `
 `
 document.head.appendChild(globalStyle)
 
-/* ─── TOKENS ───────────────────────────────────────────────── */
 const C = {
   bg: '#F7F5F0', surface: '#FFFFFF', border: '#E8E4DC',
   ink: '#1a1a18', inkMid: '#6b6860', inkLight: '#a8a49c',
@@ -44,7 +42,6 @@ const C = {
   r: '14px', rs: '8px',
 }
 
-/* ─── PRIMITIVES ───────────────────────────────────────────── */
 const LABEL_STYLE = { display:'block', fontSize:12, fontWeight:600, color:C.inkMid, marginBottom:5, textTransform:'uppercase', letterSpacing:'0.06em' }
 
 function Btn({ children, onClick, v='primary', size='md', disabled, style:sx }) {
@@ -115,11 +112,9 @@ function Err({ msg }) {
   return msg ? <div style={{ color:C.red, fontSize:13, marginTop:6, padding:'8px 12px', background:C.redL, borderRadius:C.rs }}>{msg}</div> : null
 }
 
-/* ─── CONSTANTS ────────────────────────────────────────────── */
 const AMENITY_ICONS = { wifi:'📶', parking:'🅿️', gym:'🏋️', laundry:'🫧', kitchen:'🍳', ac:'❄️' }
 const AMENITIES     = ['wifi','parking','gym','laundry','kitchen','ac']
 
-/* ─── LISTING CARD ─────────────────────────────────────────── */
 function ListingCard({ listing:l, onView }) {
   return (
     <Card hover onClick={onView} style={{ padding:0, overflow:'hidden' }}>
@@ -147,7 +142,6 @@ function ListingCard({ listing:l, onView }) {
   )
 }
 
-/* ─── APP ROOT ─────────────────────────────────────────────── */
 export default function App() {
   const [user,    setUser]    = useState(null)
   const [profile, setProfile] = useState(null)
@@ -201,7 +195,6 @@ export default function App() {
   )
 }
 
-/* ─── NAV ──────────────────────────────────────────────────── */
 function Nav({ profile, page, go }) {
   const active = p => ({ color: page===p||page.startsWith(p+'|') ? C.accent : C.inkMid, fontWeight: page===p ? 600 : 400 })
   return (
@@ -226,7 +219,6 @@ function Nav({ profile, page, go }) {
   )
 }
 
-/* ─── LOGIN ────────────────────────────────────────────────── */
 function LoginPage() {
   return (
     <div style={{ minHeight:'100vh', background:C.bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -253,7 +245,6 @@ function LoginPage() {
   )
 }
 
-/* ─── ONBOARDING ───────────────────────────────────────────── */
 function OnboardingPage({ user, onComplete }) {
   const [step,   setStep]   = useState(0)
   const [form,   setForm]   = useState({ role:'', name:user.displayName||'', location:'', housing_pref:'both' })
@@ -324,7 +315,6 @@ function OnboardingPage({ user, onComplete }) {
   )
 }
 
-/* ─── HOME ─────────────────────────────────────────────────── */
 function HomePage({ profile, onView }) {
   const [listings, setListings] = useState([])
   const [loading,  setLoading]  = useState(true)
@@ -355,7 +345,6 @@ function HomePage({ profile, onView }) {
   )
 }
 
-/* ─── SEARCH ───────────────────────────────────────────────── */
 function SearchPage({ profile, onView }) {
   const [f,  setF]        = useState({ maxPrice:'', roomType:'', type:'', amenity:'' })
   const [results, setR]   = useState([])
@@ -391,7 +380,6 @@ function SearchPage({ profile, onView }) {
   )
 }
 
-/* ─── LISTING DETAIL ───────────────────────────────────────── */
 function DetailPage({ listingId, profile, onBack, onApplied }) {
   const [listing, setListing]   = useState(null)
   const [priority, setPriority] = useState(3)
@@ -470,7 +458,6 @@ function DetailPage({ listingId, profile, onBack, onApplied }) {
   )
 }
 
-/* ─── MY APPLICATIONS ──────────────────────────────────────── */
 function MyApplicationsPage({ profile, onChat }) {
   const [apps, setApps]     = useState([])
   const [loading, setLoading] = useState(true)
@@ -529,7 +516,6 @@ function MyApplicationsPage({ profile, onChat }) {
   )
 }
 
-/* ─── NEW LISTING ──────────────────────────────────────────── */
 function NewListingPage({ profile, onDone }) {
   const [form, setForm]     = useState({ title:'', description:'', location:'', type:'off_campus', room_type:'single', price:'', spots:'1', distance_km:'', amenities:[] })
   const [err, setErr]       = useState('')
@@ -582,7 +568,6 @@ function NewListingPage({ profile, onDone }) {
   )
 }
 
-/* ─── MY LISTINGS ──────────────────────────────────────────── */
 function MyListingsPage({ profile }) {
   const [listings, setListings] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -620,7 +605,6 @@ function MyListingsPage({ profile }) {
   )
 }
 
-/* ─── INBOX ────────────────────────────────────────────────── */
 function InboxPage({ profile, onChat }) {
   const [apps, setApps]       = useState([])
   const [loading, setLoading] = useState(true)
@@ -685,7 +669,6 @@ function InboxPage({ profile, onChat }) {
   )
 }
 
-/* ─── CHAT ─────────────────────────────────────────────────── */
 function ChatPage({ listingId, otherId, myId, title, onBack }) {
   const [messages, setMessages] = useState([])
   const [input,    setInput]    = useState('')

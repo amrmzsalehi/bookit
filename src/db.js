@@ -1,22 +1,10 @@
-// ============================================================
-// db.js — All database functions your app needs
-// Import these wherever you need them:
-//   import { saveProfile, getMyProfile } from './db'
-// ============================================================
-
 import { supabase } from './supabase'
 
-// ─────────────────────────────────────────
-// PROFILES
-// ─────────────────────────────────────────
-
-// Save or update a user's profile
-// Call this after onboarding questionnaire
-export async function saveProfile(firebaseUID, data) {
+xport async function saveProfile(firebaseUID, data) {
   const { error } = await supabase
     .from('profiles')
     .upsert({
-      id: firebaseUID,         // links Firebase user to Supabase row
+      id: firebaseUID,         
       role: data.role,
       name: data.name,
       location: data.location,
@@ -25,7 +13,6 @@ export async function saveProfile(firebaseUID, data) {
   if (error) throw error
 }
 
-// Get a user's profile by their Firebase UID
 export async function getMyProfile(firebaseUID) {
   const { data, error } = await supabase
     .from('profiles')
