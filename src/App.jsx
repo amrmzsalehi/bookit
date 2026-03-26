@@ -150,44 +150,43 @@ function ListingCard({ listing:l, onView }) {
 
 /* ─── APP ROOT ─────────────────────────────────────────────── */
 export default function App() {
-  const [user,      setUser]      = useState(null)
-  const [profile,   setProfile]   = useState(null)
-  const [page,      setPage]      = useState('home')
-  const [loading,   setLoading]   = useState(true)
-  const [authError, setAuthError] = useState('')   // shows visible error if auth fails
+  const [user, setUser] = useState(null)
+const [profile, setProfile] = useState(null)
+const [loading, setLoading] = useState(true)
+const [error, setError] = useState(null)
 
 useEffect(() => {
-    // Pick up the user if they are returning from a Google redirect
-    checkRedirectResult();
+  async function init() {
+    try {
+      // handle redirect login
+      await handleRedirect()
 
-    const unsub = onAuthStateChanged(auth, async (fbUser) => {
-      try {
-        if (fbUser) {
-          setUser(fbUser);
-          // 1. Try to get the profile
-          const p = await getMyProfile(fbUser.uid);
-          setProfile(p);
-          
-          // 2. Decide where to send them
-          if (p) {
-            setPage('home');
-          } else {
-            setPage('onboarding');
-          }
-        } else {
-          setUser(null);
-          setPage('login');
+      const unsubscribe = auth.onAuthStateChanged(async (u) => {
+        if (!u) {
+          setUser(null)
+          setProfile(null)
+          setLoading(false)
+          return
         }
-      } catch (err) {
-        console.error("Auth state error:", err);
-      } finally {
-        // THIS IS THE FIX: No matter what happens above, stop the loading spinner.
-        setLoading(false);
-      }
-    });
 
-    return () => unsub();
-  }, []);
+        setUser(u)
+
+        const profileData = await getMyProfile(u.uid)
+
+        setProfile(profileData)
+        setLoading(false)
+      })
+
+      return () => unsubscribe()
+    } catch (err) {
+      console.error(err)
+      setError(err.message)
+      setLoading(false)
+    }
+  }
+
+  init()
+}, [])
   const go = setPage
 
   // ── Show loading spinner while Firebase checks auth state ──
