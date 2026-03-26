@@ -1,28 +1,36 @@
-import { supabase } from './supabase'
+// ─────────────────────────────────────────
+// PROFILES
+// ─────────────────────────────────────────
 
-xport; async function saveProfile(firebaseUID, data) {
+// Save or update a user's profile
+export async function saveProfile(firebaseUID, data) {
   const { error } = await supabase
     .from('profiles')
     .upsert({
-      id: firebaseUID,         
+      id: firebaseUID,         // links Firebase user to Supabase row
       role: data.role,
       name: data.name,
       location: data.location,
       housing_pref: data.housing_pref
-    })
-  if (error) throw error
+    }); // Added semicolon here to close the await statement
+
+  if (error) {
+    console.error("Error in saveProfile:", error.message);
+    throw error;
+  }
 }
 
+// Get a user's profile by their Firebase UID
 export async function getMyProfile(firebaseUID) {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', firebaseUID)
-    .single()  // returns one object instead of an array
-  if (error) return null
-  return data
-}
+    .single(); // Added semicolon
 
+  if (error) return null;
+  return data;
+}
 // ─────────────────────────────────────────
 // LISTINGS
 // ─────────────────────────────────────────
