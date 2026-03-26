@@ -457,11 +457,15 @@ function DetailPage({ listingId, profile, onBack, onApplied }) {
   const [err, setErr]           = useState('')
   const [saving, setSaving]     = useState(false)
 
-  useEffect(()=>{
-    import('./supabase').then(({supabase})=>{
-      supabase.from('listings').select('*, profiles(name)').eq('id',listingId).single().then(({data})=>setListing(data))
-    })
-  },[listingId])
+  useEffect(() => {
+    // Now that 'supabase' is imported at the top, we use it directly
+    supabase
+      .from('listings')
+      .select('*, profiles(name)')
+      .eq('id', listingId)
+      .single()
+      .then(({ data }) => setListing(data));
+  }, [listingId]);
 
   async function apply() {
     setSaving(true); setErr('')
