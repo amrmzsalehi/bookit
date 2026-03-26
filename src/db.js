@@ -22,15 +22,19 @@ export async function saveProfile(firebaseUID, data) {
 }
 
 // Get a user's profile by their Firebase UID
-export async function getMyProfile(firebaseUID) {
+export async function getMyProfile(userId) {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
-    .eq('id', firebaseUID)
-    .single(); // Added semicolon
+    .eq('id', userId)
+    .maybeSingle()   // ✅ IMPORTANT (not .single)
 
-  if (error) return null;
-  return data;
+  if (error) {
+    console.error("Profile fetch error:", error)
+    return null
+  }
+
+  return data
 }
 // ─────────────────────────────────────────
 // LISTINGS
