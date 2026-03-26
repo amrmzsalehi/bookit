@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { auth, signInWithGoogle, logout } from './firebase'
+import { auth, signInWithGoogle, checkRedirectResult, logout } from './firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import {
   saveProfile, getMyProfile,
@@ -8,6 +8,7 @@ import {
   sendMessage, getChatMessages, subscribeToChat, subscribeToApplications
 } from './db'
 
+/* ─── GOOGLE FONT ──────────────────────────────────────────── */
 const fontLink = document.createElement('link')
 fontLink.rel = 'stylesheet'
 fontLink.href = 'https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap'
@@ -32,6 +33,7 @@ globalStyle.textContent = `
 `
 document.head.appendChild(globalStyle)
 
+/* ─── TOKENS ───────────────────────────────────────────────── */
 const C = {
   bg: '#F7F5F0', surface: '#FFFFFF', border: '#E8E4DC',
   ink: '#1a1a18', inkMid: '#6b6860', inkLight: '#a8a49c',
@@ -42,6 +44,7 @@ const C = {
   r: '14px', rs: '8px',
 }
 
+/* ─── PRIMITIVES ───────────────────────────────────────────── */
 const LABEL_STYLE = { display:'block', fontSize:12, fontWeight:600, color:C.inkMid, marginBottom:5, textTransform:'uppercase', letterSpacing:'0.06em' }
 
 function Btn({ children, onClick, v='primary', size='md', disabled, style:sx }) {
@@ -112,9 +115,11 @@ function Err({ msg }) {
   return msg ? <div style={{ color:C.red, fontSize:13, marginTop:6, padding:'8px 12px', background:C.redL, borderRadius:C.rs }}>{msg}</div> : null
 }
 
+/* ─── CONSTANTS ────────────────────────────────────────────── */
 const AMENITY_ICONS = { wifi:'📶', parking:'🅿️', gym:'🏋️', laundry:'🫧', kitchen:'🍳', ac:'❄️' }
 const AMENITIES     = ['wifi','parking','gym','laundry','kitchen','ac']
 
+/* ─── LISTING CARD ─────────────────────────────────────────── */
 function ListingCard({ listing:l, onView }) {
   return (
     <Card hover onClick={onView} style={{ padding:0, overflow:'hidden' }}>
@@ -142,51 +147,67 @@ function ListingCard({ listing:l, onView }) {
   )
 }
 
+/* ─── APP ROOT ─────────────────────────────────────────────── */
 export default function App() {
-  const [user,    setUser]    = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [page,    setPage]    = useState('home')
-  const [loading, setLoading] = useState(true)
+  const [user,      setUser]      = useState(null)
+  const [profile,   setProfile]   = useState(null)
+  const [page,      setPage]      = useState('home')
+  const [loading,   setLoading]   = useState(true)
+  const [authError, setAuthError] = useState('')   // shows visible error if auth fails
 
-useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, (fbUser) => {
-    console.log("AUTH CHANGED:", fbUser)
+  useEffect(() => {
+    // ── Step 1: Check if user just came back from Google redirect login ──
+    // This runs once on page load. If they used redirect (not popup),
+    // Firebase has their credentials waiting here.
+    checkRedirectResult().catch(err => {
+      setAuthError('Sign-in failed: ' + err.message)
+    })
 
-    setUser(fbUser)
-    setLoading(false)
+    // ── Step 2: Listen for auth state changes ──
+    // This fires immediately with the current user (or null),
+    // and again any time they sign in or out.
+    const unsub = onAuthStateChanged(auth, async fbUser => {
+      try {
+        setUser(fbUser)
 
-    if (!fbUser) {
-      setProfile(null)
-      setPage('login')
-      return
-    }
+        if (fbUser) {
+          // User is signed in — try to load their profile
+          const p = await getMyProfile(fbUser.uid)
+          setProfile(p)
+          // p is null for brand-new users → send to onboarding
+          // p has data for returning users → send to home
+          setPage(p ? 'home' : 'onboarding')
+        } else {
+          // No user signed in
+          setProfile(null)
+          setPage('login')
+        }
+      } catch (err) {
+        // Something went wrong loading profile — don't get stuck spinning
+        console.error('Auth state error:', err)
+        setAuthError('Something went wrong loading your account. Please refresh.')
+        setPage('login')
+      } finally {
+        // Always stop the loading spinner, no matter what happened
+        setLoading(false)
+      }
+    })
 
-    getMyProfile(fbUser.uid)
-      .then((p) => {
-        console.log("PROFILE:", p)
-        setProfile(p)
-        setPage(p ? 'home' : 'onboarding')
-      })
-      .catch((err) => {
-        console.error("PROFILE ERROR:", err)
-        setProfile(null)
-        setPage('onboarding')
-      })
-  })
-
-  return () => unsubscribe()
-}, [])
+    return unsub  // cleanup the listener when component unmounts
+  }, [])
 
   const go = setPage
 
+  // ── Show loading spinner while Firebase checks auth state ──
   if (loading) return (
     <div style={{ height:'100vh', display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:16, background:C.bg }}>
       <div style={{ fontFamily:'DM Serif Display', fontSize:28, color:C.accent }}>CampusHousing</div>
       <Spinner />
+      <div style={{ fontSize:13, color:C.inkLight }}>Checking your account...</div>
     </div>
   )
 
-  if (!user || page==='login')          return <LoginPage />
+  if (!user || page==='login')          return <LoginPage authError={authError} />
   if (page==='onboarding' || !profile)  return <OnboardingPage user={user} onComplete={p=>{setProfile(p);go('home')}} />
 
   let chatArgs=null, detailId=null
@@ -210,6 +231,7 @@ useEffect(() => {
   )
 }
 
+/* ─── NAV ──────────────────────────────────────────────────── */
 function Nav({ profile, page, go }) {
   const active = p => ({ color: page===p||page.startsWith(p+'|') ? C.accent : C.inkMid, fontWeight: page===p ? 600 : 400 })
   return (
@@ -234,7 +256,26 @@ function Nav({ profile, page, go }) {
   )
 }
 
-function LoginPage() {
+/* ─── LOGIN ────────────────────────────────────────────────── */
+function LoginPage({ authError }) {
+  const [signingIn, setSigningIn] = useState(false)
+  const [localErr,  setLocalErr]  = useState('')
+
+  async function handleSignIn() {
+    setSigningIn(true)
+    setLocalErr('')
+    try {
+      await signInWithGoogle()
+      // If popup worked → onAuthStateChanged fires automatically → app loads
+      // If redirect was used → page reloads → app loads on return
+    } catch (err) {
+      setLocalErr('Sign-in failed: ' + err.message)
+      setSigningIn(false)
+    }
+  }
+
+  const errMsg = localErr || authError
+
   return (
     <div style={{ minHeight:'100vh', background:C.bg, display:'flex', alignItems:'center', justifyContent:'center' }}>
       <div className="fadeUp" style={{ textAlign:'center', maxWidth:400, padding:24 }}>
@@ -245,14 +286,31 @@ function LoginPage() {
         <p style={{ color:C.inkMid, fontSize:16, lineHeight:1.65, marginBottom:36 }}>
           The simplest way for students to find housing — and for landlords to find great tenants.
         </p>
-        <Btn size="lg" onClick={signInWithGoogle} style={{ gap:10 }}>
-          <svg width="18" height="18" viewBox="0 0 24 24">
-            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
-            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-          </svg>
-          Continue with Google
+
+        {errMsg && (
+          <div style={{ background:C.redL, color:C.red, fontSize:13, padding:'10px 14px', borderRadius:C.rs, marginBottom:20, textAlign:'left' }}>
+            ⚠️ {errMsg}
+            <br /><span style={{ opacity:.7 }}>Make sure popups are allowed for this site in your browser.</span>
+          </div>
+        )}
+
+        <Btn size="lg" onClick={handleSignIn} disabled={signingIn} style={{ gap:10, width:'100%', justifyContent:'center' }}>
+          {signingIn ? (
+            <>
+              <div style={{ width:16, height:16, border:'2px solid rgba(255,255,255,0.4)', borderTopColor:'#fff', borderRadius:'50%', animation:'spin .7s linear infinite' }} />
+              Signing in...
+            </>
+          ) : (
+            <>
+              <svg width="18" height="18" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+              </svg>
+              Continue with Google
+            </>
+          )}
         </Btn>
         <p style={{ marginTop:14, fontSize:12, color:C.inkLight }}>Free for students. Free for landlords.</p>
       </div>
@@ -260,6 +318,7 @@ function LoginPage() {
   )
 }
 
+/* ─── ONBOARDING ───────────────────────────────────────────── */
 function OnboardingPage({ user, onComplete }) {
   const [step,   setStep]   = useState(0)
   const [form,   setForm]   = useState({ role:'', name:user.displayName||'', location:'', housing_pref:'both' })
@@ -330,6 +389,7 @@ function OnboardingPage({ user, onComplete }) {
   )
 }
 
+/* ─── HOME ─────────────────────────────────────────────────── */
 function HomePage({ profile, onView }) {
   const [listings, setListings] = useState([])
   const [loading,  setLoading]  = useState(true)
@@ -360,6 +420,7 @@ function HomePage({ profile, onView }) {
   )
 }
 
+/* ─── SEARCH ───────────────────────────────────────────────── */
 function SearchPage({ profile, onView }) {
   const [f,  setF]        = useState({ maxPrice:'', roomType:'', type:'', amenity:'' })
   const [results, setR]   = useState([])
@@ -395,6 +456,7 @@ function SearchPage({ profile, onView }) {
   )
 }
 
+/* ─── LISTING DETAIL ───────────────────────────────────────── */
 function DetailPage({ listingId, profile, onBack, onApplied }) {
   const [listing, setListing]   = useState(null)
   const [priority, setPriority] = useState(3)
@@ -473,6 +535,7 @@ function DetailPage({ listingId, profile, onBack, onApplied }) {
   )
 }
 
+/* ─── MY APPLICATIONS ──────────────────────────────────────── */
 function MyApplicationsPage({ profile, onChat }) {
   const [apps, setApps]     = useState([])
   const [loading, setLoading] = useState(true)
@@ -531,6 +594,7 @@ function MyApplicationsPage({ profile, onChat }) {
   )
 }
 
+/* ─── NEW LISTING ──────────────────────────────────────────── */
 function NewListingPage({ profile, onDone }) {
   const [form, setForm]     = useState({ title:'', description:'', location:'', type:'off_campus', room_type:'single', price:'', spots:'1', distance_km:'', amenities:[] })
   const [err, setErr]       = useState('')
@@ -583,6 +647,7 @@ function NewListingPage({ profile, onDone }) {
   )
 }
 
+/* ─── MY LISTINGS ──────────────────────────────────────────── */
 function MyListingsPage({ profile }) {
   const [listings, setListings] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -620,6 +685,7 @@ function MyListingsPage({ profile }) {
   )
 }
 
+/* ─── INBOX ────────────────────────────────────────────────── */
 function InboxPage({ profile, onChat }) {
   const [apps, setApps]       = useState([])
   const [loading, setLoading] = useState(true)
@@ -684,6 +750,7 @@ function InboxPage({ profile, onChat }) {
   )
 }
 
+/* ─── CHAT ─────────────────────────────────────────────────── */
 function ChatPage({ listingId, otherId, myId, title, onBack }) {
   const [messages, setMessages] = useState([])
   const [input,    setInput]    = useState('')
